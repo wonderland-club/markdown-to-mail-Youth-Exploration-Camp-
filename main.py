@@ -12,30 +12,34 @@ from src.email_handler import get_variables_from_request, process_template, conv
 
 app = Flask(__name__)
 
+def make_response(success, message, step_status, http_code=200):
+    """统一的 JSON 响应封装。"""
+    return jsonify({"success": success, "message": message, "step_status": step_status}), http_code
+
 @app.route('/send_email', methods=['POST'])
 def handle_send_email():
-    """
-    接收 POST 请求，解析 JSON 内容后：
-      1. 根据数据生成变量字典。
-      2. 读取 Markdown 模板文件并替换模板中的占位符。
-      3. 将替换后的内容转换为 HTML（并内联 CSS），生成纯文本版本。
-      4. 发送邮件。
-    """
+    """处理发送邮件请求：校验参数、渲染模板、发送邮件。"""
     step_status = {}
 
     # 获取 JSON 数据
     data = request.get_json()
     if not data:
         step_status['获取信息'] = '错误: 请求体为空或无效 JSON'
-        return jsonify({"success": False, "message": "请求体为空或不是有效的 JSON", "step_status": step_status}), 400
+        return make_response(False, '请求体为空或不是有效的 JSON', step_status, 400)
     step_status['获取信息'] = '成功'
     
-    # 检查必须的参数 mail_recipient
-    mail_recipient = data.get("mail_recipient")
-    if not mail_recipient:
-        step_status['检查 mail_recipient'] = '错误: 缺少 mail_recipient 参数'
-        return jsonify({"success": False, "message": "缺少 mail_recipient 参数", "step_status": step_status}), 400
-    step_status['检查 mail_recipient'] = '成功'
+    # 检查必须的参数 spaceone-mail_recipient（收件人邮箱）
+    recipient = data.get('spaceone-mail_recipient')
+    if not recipient:
+        step_status['检查 spaceone-mail_recipient'] = '错误: 缺少 spaceone-mail_recipient 参数'
+        return make_response(False, '缺少 spaceone-mail_recipient 参数', step_status, 400)
+    step_status['检查 spaceone-mail_recipient'] = '成功'
+
+    # 检查必须的业务参数 spaceone_child_name（其余变量由服务端生成）
+    if not data.get("spaceone_child_name"):
+        step_status['检查 spaceone_child_name'] = '错误: 缺少 spaceone_child_name 参数'
+        return jsonify({"success": False, "message": "缺少 spaceone_child_name 参数", "step_status": step_status}), 400
+    step_status['检查 spaceone_child_name'] = '成功'
     
     # 根据请求数据生成变量字典
     variables = get_variables_from_request(data)
@@ -45,7 +49,7 @@ def handle_send_email():
     md_text, error = process_template(EMAIL_CONFIG['template_path'], variables)
     if error:
         step_status['读取邮件模板'] = f'错误: {error}'
-        return jsonify({"success": False, "message": f"读取邮件模板失败: {error}", "step_status": step_status}), 500
+        return make_response(False, f'读取邮件模板失败: {error}', step_status, 500)
     step_status['读取邮件模板'] = '成功'
     step_status['模板替换'] = '成功'
 
@@ -53,7 +57,7 @@ def handle_send_email():
     inlined_html, error = convert_to_html(md_text)
     if error:
         step_status['Markdown 转 HTML'] = f'错误: {error}'
-        return jsonify({"success": False, "message": f"Markdown 转换失败: {error}", "step_status": step_status}), 500
+        return make_response(False, f'Markdown 转换失败: {error}', step_status, 500)
     step_status['Markdown 转 HTML'] = '成功'
     step_status['内联 CSS'] = '成功'
 
@@ -64,16 +68,17 @@ def handle_send_email():
     success, send_status = send_email(
         inlined_html,
         plain_text,
-        mail_recipient,
+        recipient,
         EMAIL_CONFIG['subject']
     )
     step_status['邮件发送'] = '成功' if success else f'错误: {send_status}'
 
     if success:
-        return jsonify({"success": True, "message": "邮件发送成功!", "step_status": step_status})
+        return make_response(True, '邮件发送成功!', step_status)
     else:
-        return jsonify({"success": False, "message": f"邮件发送失败: {send_status}", "step_status": step_status}), 500
+        return make_response(False, f'邮件发送失败: {send_status}', step_status, 500)
 
 if __name__ == '__main__':
-    # 启动 Flask 服务器，监听所有网卡 5001 端口
-    app.run(host='0.0.0.0', port=5001)
+    # 启动 Flask 服务器，监听所有网卡，端口可通过环境变量 PORT 配置
+    port = int(os.getenv('PORT', '5001'))
+    app.run(host='0.0.0.0', port=port)

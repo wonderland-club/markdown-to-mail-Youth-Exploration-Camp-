@@ -90,16 +90,12 @@ python main.py
 
 ```json
 {
-  "mail_recipient": "recipient@example.com",
-  "spaceone_name": "姓名",
-  "spaceone_phase": "五",
-  "spaceone_paragraph": "自定义段落",
-  "spaceone_offerings": "服务内容",
-  "spaceone_cost": "费用",
-  "spaceone_member_start": "2025/05/01",
-  "spaceone_membership_end": "2026/05/01"
+  "spaceone-mail_recipient": "recipient@example.com",
+  "spaceone_child_name": "孩子姓名"
 }
 ```
+
+说明：服务端会自动生成 `spaceone_current_time`（当前日期）与 `spaceone_Payment_deadline`（当前日期+3天），格式均为 `YYYY年MM月DD日`。
 
 ### 响应格式
 
@@ -109,7 +105,8 @@ python main.py
   "message": "邮件发送成功!",
   "step_status": {
     "获取信息": "成功",
-    "检查 mail_recipient": "成功",
+    "检查 spaceone-mail_recipient": "成功",
+    "检查 spaceone_child_name": "成功",
     "生成变量": "成功",
     "读取邮件模板": "成功",
     "模板替换": "成功",
