@@ -84,13 +84,60 @@ python main.py
 
 服务将在 `0.0.0.0:5001` 上启动。
 
+### 使用 Conda 启动
+
+以下步骤在 macOS/Windows/Linux 通用：
+
+1) 创建并激活环境
+
+```bash
+conda create -n yec-mail python=3.9 -y
+conda activate yec-mail
+```
+
+2) 安装依赖与 pandoc
+
+```bash
+pip install -r requirements.txt
+# 建议使用 conda 安装 pandoc（必要的外部依赖）
+conda install -n yec-mail -c conda-forge pandoc -y
+```
+
+3) 启动服务
+
+```bash
+# 可选：避免混用用户级 site-packages
+export PYTHONNOUSERSITE=1
+# 可选：自定义端口
+export PORT=5001
+python main.py
+```
+
+4) 使用 Postman 测试
+
+- 方法: POST
+- URL: http://localhost:${PORT:-5001}/send_email
+- Headers: Content-Type: application/json
+- Body (raw, JSON):
+
+```json
+{
+  "spaceone_mail_recipient": "recipient@example.com",
+  "spaceone_child_name": "小明"
+}
+```
+
+说明：服务端会自动生成 `spaceone_current_time`（当前日期）与 `spaceone_Payment_deadline`（当前日期+3天），格式均为 `YYYY年MM月DD日`。
+
+若返回 500，请在前台运行时查看终端输出的详细堆栈并反馈。
+
 ### API调用
 
 向 `/send_email` 端点发送 POST 请求，JSON 格式如下：
 
 ```json
 {
-  "spaceone-mail_recipient": "recipient@example.com",
+  "spaceone_mail_recipient": "recipient@example.com",
   "spaceone_child_name": "孩子姓名"
 }
 ```
@@ -105,7 +152,7 @@ python main.py
   "message": "邮件发送成功!",
   "step_status": {
     "获取信息": "成功",
-    "检查 spaceone-mail_recipient": "成功",
+    "检查 spaceone_mail_recipient": "成功",
     "检查 spaceone_child_name": "成功",
     "生成变量": "成功",
     "读取邮件模板": "成功",
