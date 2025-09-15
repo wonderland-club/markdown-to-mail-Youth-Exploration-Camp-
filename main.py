@@ -30,10 +30,14 @@ def handle_send_email():
         step_status['获取信息'] = '成功'
 
         # 检查必须的参数 spaceone_mail_recipient（收件人邮箱）
-        recipient = data.get('spaceone_mail_recipient')
+        # 兼容旧字段名 spaceone-mail_recipient，便于平滑过渡
+        recipient = data.get('spaceone_mail_recipient') or data.get('spaceone-mail_recipient')
         if not recipient:
             step_status['检查 spaceone_mail_recipient'] = '错误: 缺少 spaceone_mail_recipient 参数'
             return make_response(False, '缺少 spaceone_mail_recipient 参数', step_status, 400)
+        # 若使用了旧字段名，提示兼容信息
+        if 'spaceone-mail_recipient' in data and 'spaceone_mail_recipient' not in data:
+            step_status['参数兼容'] = '收到 spaceone-mail_recipient，已兼容处理；请改用 spaceone_mail_recipient'
         step_status['检查 spaceone_mail_recipient'] = '成功'
 
         # 检查必须的业务参数 spaceone_child_name（其余变量由服务端生成）
