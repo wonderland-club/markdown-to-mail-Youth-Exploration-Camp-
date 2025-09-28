@@ -11,10 +11,19 @@ SMTP_CONFIG = {
     'port': 465
 }
 
-# 邮件相关配置
+# 邮件模板和主题配置
+_BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+_TEMPLATE_DIR = os.path.join(_BASE_DIR, 'templates')
+
 EMAIL_CONFIG = {
-    'subject': '「一场」少年探索营 视频沟通结果通知',
-    'template_path': os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templates', '邮件内容.md')
+    'shao_nian': {
+        'subject': '「一场」少年探索营通知',
+        'template_path': os.path.join(_TEMPLATE_DIR, '邮件内容_少年.md')
+    },
+    'cheng_ren': {
+        'subject': '「一场」SpaceOne 视频沟通结果',
+        'template_path': os.path.join(_TEMPLATE_DIR, '邮件内容_成人.md')
+    }
 }
 
 

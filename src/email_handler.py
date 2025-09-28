@@ -9,23 +9,59 @@ import pypandoc
 from premailer import transform
 from datetime import datetime, timedelta
 import pytz
-from config import SMTP_CONFIG, EMAIL_CONFIG, DATE_FORMAT
+from config import SMTP_CONFIG, DATE_FORMAT
 
-def get_variables_from_request(data):
-    """
-    仅接收 spaceone_child_name，其余变量在服务端生成：
-    - spaceone_current_time：当前日期（YYYY年MM月DD日）
-    - spaceone_Payment_deadline：当前日期+3天（YYYY年MM月DD日）
-    """
+SHAO_NIAN = 'shao_nian'
+CHENG_REN = 'cheng_ren'
+
+
+def _base_time_context():
     tz_sh = pytz.timezone('Asia/Shanghai')
     now_sh = datetime.now(tz_sh)
+    return now_sh, (now_sh + timedelta(days=3))
 
-    variables = {}
-    variables['spaceone_child_name'] = data.get('spaceone_child_name')
-    variables['spaceone_current_time'] = now_sh.strftime(DATE_FORMAT['output'])
-    variables['spaceone_Payment_deadline'] = (now_sh + timedelta(days=3)).strftime(DATE_FORMAT['output'])
 
-    return variables
+def get_variables_from_request(data, template_type):
+    """根据不同模板类型生成变量字典。"""
+    now_sh, deadline_sh = _base_time_context()
+    current_date = now_sh.strftime(DATE_FORMAT['output'])
+    deadline_date = deadline_sh.strftime(DATE_FORMAT['output'])
+
+    if template_type == SHAO_NIAN:
+        child_name = data.get('spaceone_child_name')
+        if not child_name:
+            return None, '缺少 spaceone_child_name 参数'
+
+        variables = {
+            'spaceone_child_name': child_name,
+            'spaceone_current_time': current_date,
+            'spaceone_Payment_deadline': deadline_date
+        }
+        return variables, None
+
+    if template_type == CHENG_REN:
+        required_fields = [
+            'spaceone_name',
+            'spaceone_phase',
+            'spaceone_product',
+            'spaceone_cost'
+        ]
+
+        missing_keys = [field for field in required_fields if not data.get(field)]
+        if missing_keys:
+            return None, f"缺少必要参数: {', '.join(missing_keys)}"
+
+        variables = {
+            'spaceone_name': data.get('spaceone_name'),
+            'spaceone_phase': data.get('spaceone_phase'),
+            'spaceone_product': data.get('spaceone_product'),
+            'spaceone_cost': data.get('spaceone_cost'),
+            'spaceone_fees_Deadline': deadline_date,
+            'spaceone_current_time': current_date
+        }
+        return variables, None
+
+    return None, f'未知的模板类型: {template_type}'
 
 def process_template(template_path, variables):
     """
@@ -68,7 +104,7 @@ def convert_to_html(md_text):
     except Exception as e:
         return None, str(e)
 
-def send_email(html_content, plain_text, mail_recipient, subject):
+def send_email(html_content, plain_text, mail_recipient, subject, cc_recipients=None):
     """
     根据生成的邮件内容，利用 SMTP 发送邮件。
 
@@ -77,6 +113,7 @@ def send_email(html_content, plain_text, mail_recipient, subject):
         plain_text (str): 纯文本格式邮件内容
         mail_recipient (str): 收件人邮箱
         subject (str): 邮件主题
+        cc_recipients (List[str], optional): 抄送邮箱列表
     """
     # 从配置获取SMTP设置
     SMTP_SERVER = SMTP_CONFIG['server']
@@ -89,6 +126,8 @@ def send_email(html_content, plain_text, mail_recipient, subject):
     msg['Subject'] = subject
     msg['From'] = SMTP_USER
     msg['To'] = mail_recipient
+    if cc_recipients:
+        msg['Cc'] = ', '.join(cc_recipients)
 
     # 添加纯文本和 HTML 内容
     msg.attach(MIMEText(plain_text, 'plain', 'utf-8'))
@@ -100,7 +139,10 @@ def send_email(html_content, plain_text, mail_recipient, subject):
         context = ssl.create_default_context()
         server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context)
         server.login(SMTP_USER, SMTP_PASSWORD)
-        server.sendmail(SMTP_USER, mail_recipient, msg.as_string())
+        recipients = [mail_recipient]
+        if cc_recipients:
+            recipients.extend(cc_recipients)
+        server.sendmail(SMTP_USER, recipients, msg.as_string())
         server.quit()
         print("邮件发送成功!")
         return True, "邮件发送成功"

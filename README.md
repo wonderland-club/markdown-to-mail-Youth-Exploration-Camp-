@@ -153,8 +153,8 @@ python main.py
   "step_status": {
     "获取信息": "成功",
     "检查 spaceone_mail_recipient": "成功",
-    "检查 spaceone_child_name": "成功",
     "生成变量": "成功",
+    "模板配置": "成功",
     "读取邮件模板": "成功",
     "模板替换": "成功",
     "Markdown 转 HTML": "成功",
@@ -174,5 +174,6 @@ python main.py
 │   ├── config.py       # 配置文件
 │   └── email_handler.py # 邮件处理模块
 └── templates/          # 邮件模板
-    └── 邮件内容.md      # Markdown邮件模板
+    ├── 邮件内容_少年.md  # 少年邮件模板
+    └── 邮件内容_成人.md  # 成人邮件模板
 ```
